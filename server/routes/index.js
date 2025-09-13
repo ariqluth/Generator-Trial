@@ -14,7 +14,8 @@ const router = express.Router();
 // API routes
 router.use('/auth', authRoutes);
 router.use('/generator', productionGuard, generatorRoutes);
-router.use('/wireframe', productionGuard, wireframeRoutes);
+// Allow wireframe in all envs to support local generator UI
+router.use('/wireframe', /*productionGuard,*/ wireframeRoutes);
 router.use('/docs', productionGuard, docsRoutes);
 router.use('/dynamic', dynamicRoutes);
 router.use('/fn', customFunctionRoutes);

@@ -6,6 +6,7 @@
   "scripts": {
     "dev:server": "node --watch server/index.js",
     "dev": "npm run dev:server",
+    "dev:nowatch": "node server/index.js",
     "build": "vue-tsc -b",
     "db:migrate": "node server/scripts/migrate.js",
     "db:seed": "node server/scripts/seed.js",

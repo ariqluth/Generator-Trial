@@ -49,6 +49,19 @@ export const cobaController = {
     }
   },
 
+    // Contoh: Import Excel ke database
+  async importPDF(req, res) {
+    if (!req.excelData) return res.status(400).json({ error: 'No Excel data' });
+    const [header, ...rows] = req.excelData;
+    const records = rows.map(row => Object.fromEntries(header.map((h, i) => [h, row[i]])));
+    try {
+      const inserted = await req.models.coba.bulkCreate(records);
+      res.json({ message: 'Excel imported', data: inserted });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+
   // Contoh: Penggunaan transaksi database (db_transaction)
   async dbTransactionExample(req, res) {
     const { coba } = req.models;

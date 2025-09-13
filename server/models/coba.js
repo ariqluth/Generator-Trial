@@ -11,6 +11,9 @@ const coba = sequelize.define('coba', {
     nama: {
         type: DataTypes.STRING,
     },
+    test: {
+        type: DataTypes.STRING,
+    },
 }, {
     timestamps: true,
     freezeTableName: true

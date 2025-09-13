@@ -4,36 +4,69 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/logo-putih.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Material+Icons+Outlined"
-      rel="stylesheet"
-    />
-    <title>Database Column Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Icons+Outlined" rel="stylesheet" />
+    <title>Wireframe Generator</title>
     <script>
       // Use saved project name as the page title when available
       (function () {
         try {
-          var projectName = localStorage.getItem("project_name");
+          var projectName = localStorage.getItem('project_name');
           if (projectName && projectName.trim()) {
-            document.title = projectName + " — Database Column Generator";
+            document.title = projectName + ' — Wireframe Generator';
           }
-        } catch (e) {
-          // ignore (localStorage may be unavailable in some contexts)
-        }
+        } catch (e) {}
       })();
     </script>
+
+    <!-- Tailwind for quick UI -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Handsontable (grid) -->
     <script src="https://unpkg.com/handsontable/dist/handsontable.full.min.js"></script>
-    <link
-      href="https://unpkg.com/handsontable/dist/handsontable.full.min.css"
-      rel="stylesheet"
-    />
+    <link href="https://unpkg.com/handsontable/dist/handsontable.full.min.css" rel="stylesheet" />
+
+    <!-- Monaco editor loader for code tabs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.js"></script>
-    <link rel="stylesheet" href="../public/wireframe.css" />
-    <script type="module" crossorigin src="/assets/index-CMUGUXQ1.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DOvoim48.css">
+
+    <!-- Vue 3 (global build) and Axios -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.7.8/dist/axios.min.js"></script>
+
+    <!-- Local styles tuned for the grid/tabs -->
+    <link rel="stylesheet" href="/wireframe.css" />
   </head>
-  <body>
-    <div id="app"></div>
+  <body class="bg-slate-100">
+    <div id="app" class="h-screen"></div>
+
+    <!-- Socket.IO for lightweight hot reload (dev only) -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      (function() {
+        try {
+          var socket = window.io && window.io();
+          // expose for Vue app (activity log streaming)
+          if (socket) window.appSocket = socket;
+          if (!socket) return;
+          socket.on('hot-reload', function (payload) {
+            // If CSS changed, bust cache; otherwise reload the page
+            if (payload && payload.ext === '.css') {
+              var links = document.querySelectorAll('link[rel="stylesheet"]');
+              var ts = Date.now();
+              links.forEach(function (link) {
+                var href = link.getAttribute('href');
+                if (!href) return;
+                var base = href.split('?')[0];
+                link.setAttribute('href', base + '?v=' + ts);
+              });
+            } else {
+              location.reload();
+            }
+          });
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- Our Vue app (no build step) -->
+    <script src="/js/vue-wireframe.js"></script>
   </body>
-</html>
+  </html>

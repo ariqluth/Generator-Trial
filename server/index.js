@@ -133,6 +133,50 @@ io.on('connection', (socket) => {
 // Make io globally available for logging
 global.io = io;
 
+// Lightweight frontend hot-reload (dev only): watch public/ and views/ and signal clients
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    const watched = new Set();
+    const debounceMap = new Map();
+    const watchRecursive = (dir) => {
+      if (!fs.existsSync(dir) || watched.has(dir)) return;
+      watched.add(dir);
+      // Watch current dir
+      try {
+        fs.watch(dir, { persistent: true }, (eventType, filename) => {
+          if (!filename) return;
+          const ext = path.extname(filename);
+          // Debounce per file to avoid duplicate events
+          const key = path.join(dir, filename);
+          clearTimeout(debounceMap.get(key));
+          const t = setTimeout(() => {
+            if (global.io) {
+              global.io.emit('hot-reload', { file: key, ext });
+            }
+          }, 120);
+          debounceMap.set(key, t);
+        });
+      } catch (e) {
+        console.warn('Hot-reload watcher error for', dir, e.message);
+      }
+      // Recurse into subdirs
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const ent of entries) {
+          if (ent.isDirectory()) {
+            watchRecursive(path.join(dir, ent.name));
+          }
+        }
+      } catch {}
+    };
+
+    watchRecursive(path.join(__dirname, 'public'));
+    watchRecursive(path.join(__dirname, 'views'));
+  } catch (e) {
+    console.warn('Hot-reload setup failed:', e.message);
+  }
+}
+
 // Tambah endpoint untuk log activity
 apiRoutes.get('/logs/activity', (req, res) => {
   const logDir = path.join(__dirname, 'logs');
