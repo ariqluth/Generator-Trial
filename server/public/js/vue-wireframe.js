@@ -81,7 +81,8 @@
               <button :class="tabBtnClass('hook')" @click="openHook()">Custom Hook</button>
               <button :class="tabBtnClass('helper')" @click="openHelper()">Helper</button>
               <div class="ml-auto flex items-center gap-2">
-                <button class="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200" @click="showProject=true">Project</button>
+              <a href="/docs" target="_blank" class="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200">API Docs</a>
+              <button class="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200" @click="showProject=true">Project</button>
               <button id="btnShowLog" class="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200" @click="showLogTab">Show Log</button>
               </div>
             </div>

@@ -66,6 +66,11 @@ app.get('/', (req, res) => {
   res.render('homepage');
 });
 
+// API Docs page (Postman-like UI)
+app.get('/docs', (req, res) => {
+  res.render('docs');
+});
+
 
 // API routes
 app.use('/api', apiRoutes);
