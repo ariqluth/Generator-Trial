@@ -68,7 +68,7 @@
               </button>
             </div>
           </div>
-          <div class="px-3 py-2 text-[11px] text-slate-400 text-center select-none">Developer by <a href="https://instagram.com/ariqluth" target="_blank" class="text-blue-500 font-semibold hover:underline">Ariq Luthfi Rifqi</a></div>
+          <div class="px-3 py-2 text-[11px] text-slate-400 text-center select-none">Developer by <a href="https://instagram.com/arqluth" target="_blank" class="text-blue-500 font-semibold hover:underline">Ariq Luthfi Rifqi</a></div>
         </aside>
 
         <!-- Main -->
