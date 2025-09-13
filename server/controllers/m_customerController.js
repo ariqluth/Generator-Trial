@@ -1,0 +1,72 @@
+// Controller for m_customer
+//
+// Cara penggunaan req di custom function:
+// - req.body         : data dari body request (JSON/form)
+// - req.query        : data dari query string (?param=value)
+// - req.files        : file upload (jika ada, via upload middleware)
+//      - Untuk upload foto/gambar, akses req.files.find(f => f.mimetype.startsWith('image/'))
+//      - Tidak harus fieldname 'image', yang penting mimetype-nya image/*
+//      - Contoh properti file: { fieldname, originalname, mimetype, buffer/path, size }
+// - req.excelData    : hasil parsing file Excel (jika upload Excel, via excelImport middleware)
+// - req.models       : seluruh model Sequelize (via attachModels middleware), contoh: req.models.m_customer
+//
+// Tambahkan custom function di bawah ini
+
+export const m_customerController = {
+  // Contoh: Upload gambar ke database (kolom image: Buffer/BLOB)
+//   async uploadImage(req, res) {
+//     const imageFile = req.files?.find(f => f.mimetype.startsWith('image/'));
+//     if (!imageFile) return res.status(400).json({ error: 'No image file found' });
+//     try {
+//       const inserted = await req.models.m_customer.create({ image: imageFile.buffer });
+//       res.json({ message: 'Image uploaded', data: inserted });
+//     } catch (err) {
+//       res.status(500).json({ error: err.message });
+//     }
+//   },
+
+    async uploadImage(req, res) {
+        const fileFields = Object.keys(req.models.coba.rawAttributes).filter(
+        key => req.models.m_customer.rawAttributes[key].type && req.models.m_customer.rawAttributes[key].type.key === 'STRING'
+        );
+        let data = req.body;
+        if (fileFields.length > 0 && req.files && req.files.length > 0) {
+            for (const field of fileFields) {
+                const fileObj = req.files.find(f => f.fieldname === field);
+                if (fileObj && fileObj.path) {
+                    // Simpan path apa adanya dari multer
+                    data[field] = fileObj.path;
+                }
+            }
+        }
+        try {
+            const inserted = await req.models.m_customer.create(data);
+            res.json({ message: 'Image uploaded', data: inserted });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    },
+
+    // Contoh: Import Excel ke database
+    async importExcel(req, res) {
+        if (!req.excelData) return res.status(400).json({ error: 'No Excel data' });
+        const [header, ...rows] = req.excelData;
+        const records = rows.map(row => Object.fromEntries(header.map((h, i) => [h, row[i]])));
+        try {
+        const inserted = await req.models.m_customer.bulkCreate(records);
+        res.json({ message: 'Excel imported', data: inserted });
+        } catch (err) {
+        res.status(500).json({ error: err.message });
+        }
+    },
+
+    async generateCode(req, res) {
+        const params = req.query;
+        const code = await getCodeStructure(req.models.m_customer, params.menu_id, params.unit_bussiness_id)
+        if (code.status === 'err') {
+            res.json(errorResponse(code.error))
+        }
+        res.json(successResponse(code.data))
+    }
+
+};

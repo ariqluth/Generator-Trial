@@ -1,0 +1,49 @@
+import { DataTypes } from 'sequelize';
+import { sequelize } from '../config/database.js';
+
+const t_delivery_plan_approval = sequelize.define('t_delivery_plan_approval', {
+    id: {
+        type: DataTypes.UUID,
+        primaryKey: true,
+        comment: "SEBAGAI IDENTIFIER",
+        defaultValue: DataTypes.UUIDV4,
+    },
+    dp_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+    },
+    approval_id: {
+        type: DataTypes.UUID,
+    },
+    approval_d_id: {
+        type: DataTypes.UUID,
+    },
+    user_id: {
+        type: DataTypes.UUID,
+    },
+    level: {
+        type: DataTypes.INTEGER,
+    },
+    status: {
+        type: DataTypes.STRING,
+        defaultValue: "PENDING",
+    },
+    full_approval: {
+        type: DataTypes.BOOLEAN,
+    },
+    notes: {
+        type: DataTypes.TEXT,
+    },
+    approved_at: {
+        type: DataTypes.DATE,
+    },
+    is_active: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true,
+    },
+}, {
+    timestamps: true,
+    freezeTableName: true
+});
+
+export default t_delivery_plan_approval;
