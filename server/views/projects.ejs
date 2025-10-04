@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Projects</title>
+    <link rel="icon" type="image/svg+xml" href="/logo-putih.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Icons+Outlined" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body { font-family: 'Inter', sans-serif; }
+      .modal-enter { opacity: 0; transform: translateY(20px); }
+      .modal-enter-active { transition: all 0.2s ease-out; opacity: 1; transform: translateY(0); }
+    </style>
+  </head>
+  <body class="bg-slate-100 min-h-screen">
+    <div class="min-h-screen">
+      <header class="bg-white border-b border-slate-200">
+        <div class="mx-auto max-w-6xl px-6 py-6">
+          <div class="flex flex-wrap items-center gap-4">
+            <div>
+              <h1 class="text-2xl font-semibold text-slate-800">My Projects</h1>
+              <p class="text-sm text-slate-500">Kelola koneksi backend PostgreSQL Anda lalu mulai membuat wireframe.</p>
+            </div>
+            <div class="ml-auto flex items-center gap-2">
+              <div class="relative">
+                <span class="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base">search</span>
+                <input id="searchInput" type="text" placeholder="Search projects..."
+                  class="w-56 rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <button id="gridViewBtn" class="view-toggle-btn inline-flex h-10 w-10 items-center justify-center rounded-lg border border-transparent bg-white text-slate-500 shadow-sm transition hover:border-indigo-200 hover:text-indigo-500" data-view="grid" title="Grid view">
+                <span class="material-icons-outlined text-lg">grid_view</span>
+              </button>
+              <button id="listViewBtn" class="view-toggle-btn inline-flex h-10 w-10 items-center justify-center rounded-lg border border-transparent bg-white text-slate-500 shadow-sm transition hover:border-indigo-200 hover:text-indigo-500" data-view="list" title="List view">
+                <span class="material-icons-outlined text-lg">view_agenda</span>
+              </button>
+              <button id="newProjectBtn" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500" title="Add new project">
+                <span class="material-icons-outlined text-base">add</span>
+                New Project
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="mx-auto max-w-6xl px-6 py-10">
+        <div id="projectsContainer" class="grid gap-5 sm:grid-cols-2" data-empty="Belum ada project. Tambahkan project untuk mulai."></div>
+      </main>
+    </div>
+
+    <!-- Modal -->
+    <div id="projectModal" class="hidden">
+      <div id="modalBackdrop" class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm"></div>
+      <div class="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div class="modal-enter modal-enter-active w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+          <div class="flex items-start justify-between">
+            <div>
+              <h2 class="text-xl font-semibold text-slate-800">Connect Your Backend Server</h2>
+              <p class="mt-1 text-sm text-slate-500">Masukan detail proyek dengan backend PostgreSQL.</p>
+            </div>
+            <button id="closeModalBtn" class="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
+              <span class="material-icons-outlined text-lg">close</span>
+            </button>
+          </div>
+          <form id="projectForm" class="mt-6 space-y-4">
+            <div>
+              <label class="text-sm font-medium text-slate-700" for="projectName">Project Name</label>
+              <div class="mt-1 relative">
+                <span class="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base">badge</span>
+                <input id="projectName" name="name" type="text" required placeholder="eg: My Super Project"
+                  class="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+            </div>
+            <div>
+              <label class="text-sm font-medium text-slate-700" for="projectBaseUrl">Base URL</label>
+              <div class="mt-1 relative">
+                <span class="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base">public</span>
+                <input id="projectBaseUrl" name="baseUrl" type="url" required placeholder="eg: https://server.example.com"
+                  class="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+            </div>
+            <div>
+              <label class="text-sm font-medium text-slate-700" for="projectToken">Bearer Token (optional)</label>
+              <div class="mt-1 relative">
+                <span class="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base">vpn_key</span>
+                <input id="projectToken" name="token" type="text" placeholder="eg: eyJhbGciOiJIUzI1NiIs..."
+                  class="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+            </div>
+            <div class="flex items-center justify-between pt-2">
+              <button type="button" id="clearFormBtn" class="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100">Clear</button>
+              <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500">
+                <span class="material-icons-outlined text-base">done</span>
+                Add &amp; Open
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script src="/js/projects.js" type="module"></script>
+  </body>
+</html>

@@ -28,7 +28,7 @@ import t_cash_receipt_d from './t_cash_receipt_d.js';
 import t_cash_receipt from './t_cash_receipt.js';
 import t_cash_disbursement_d from './t_cash_disbursement_d.js';
 import t_cash_disbursement from './t_cash_disbursement.js';
-import test_coba from './test_coba.js';
+
 import images from './images.js';
 
 import m_sales_area_d_sales from './m_sales_area_d_sales.js';
@@ -2232,7 +2232,7 @@ export {
   t_cash_receipt,
   t_cash_disbursement_d,
   t_cash_disbursement,
-  test_coba,
+
   images,
 
   m_sales_area_d_sales,

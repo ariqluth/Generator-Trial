@@ -25,19 +25,6 @@
     <script src="https://unpkg.com/handsontable/dist/handsontable.full.min.js"></script>
     <link href="https://unpkg.com/handsontable/dist/handsontable.full.min.css" rel="stylesheet" />
 
-    <!-- Monaco editor loader for code tabs -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.js"></script>
-
-    <!-- Vue 3 (global build) and Axios -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios@1.7.8/dist/axios.min.js"></script>
-
-    <!-- Local styles tuned for the grid/tabs -->
-    <link rel="stylesheet" href="/wireframe.css" />
-  </head>
-  <body class="bg-slate-100">
-    <div id="app" class="h-screen"></div>
-
     <!-- Socket.IO for lightweight hot reload (dev only) -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -66,7 +53,109 @@
       })();
     </script>
 
+    <!-- Monaco editor loader for code tabs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.js"></script>
+
+    <!-- Vue 3 (global build) and Axios -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.7.8/dist/axios.min.js"></script>
+
+    <!-- Local styles tuned for the grid/tabs -->
+    <link rel="stylesheet" href="/wireframe.css" />
+  </head>
+  <body class="bg-slate-100">
+    <div id="app" class="h-screen"></div>
+
     <!-- Our Vue app (no build step) -->
-    <script src="/js/vue-wireframe.js"></script>
+    <script>
+      (function () {
+        var STORAGE_KEYS = {
+          id: 'project_id',
+          name: 'project_name',
+          base: 'project_base_url',
+          token: 'project_token'
+        };
+
+        function updateTitle(name) {
+          if (name && name.trim()) {
+            document.title = name.trim() + ' - Wireframe Generator';
+          } else {
+            document.title = 'Wireframe Generator';
+          }
+        }
+
+        function normalizeBaseUrl(url) {
+          if (!url) return '';
+          return url.endsWith('/') ? url.slice(0, -1) : url;
+        }
+
+        function setProject(project) {
+          project = project || {};
+          var name = (project.name || '').trim();
+          var base = normalizeBaseUrl((project.baseUrl || project.base_url || '').trim());
+          var token = (project.token || '').trim();
+          localStorage.setItem(STORAGE_KEYS.id, project.id || '');
+          localStorage.setItem(STORAGE_KEYS.name, name);
+          localStorage.setItem(STORAGE_KEYS.base, base);
+          localStorage.setItem(STORAGE_KEYS.token, token);
+          updateTitle(name);
+          return base;
+        }
+
+        function loadVueApp() {
+          if (document.getElementById('wireframe-app-script')) return;
+          var script = document.createElement('script');
+          script.id = 'wireframe-app-script';
+          script.src = '/js/vue-wireframe.js';
+          document.body.appendChild(script);
+        }
+
+        function redirectToProjects(message) {
+          if (message) {
+            try { console.warn(message); } catch (e) {}
+          }
+          window.location.href = '/projects';
+        }
+
+        var params = new URLSearchParams(window.location.search);
+        var projectParam = params.get('project');
+
+        if (projectParam) {
+          fetch('/api/projects/' + encodeURIComponent(projectParam))
+            .then(function (res) {
+              return res.json().then(function (body) {
+                return { ok: res.ok, body: body };
+              });
+            })
+            .then(function (result) {
+              if (!result.ok || !result.body || !result.body.success) {
+                throw new Error((result.body && result.body.message) || 'Project not found');
+              }
+              var base = setProject(result.body.data || {});
+              if (!base) {
+                throw new Error('Project base URL is missing');
+              }
+              params.delete('project');
+              var cleanSearch = params.toString();
+              var newUrl = window.location.pathname + (cleanSearch ? '?' + cleanSearch : '') + window.location.hash;
+              window.history.replaceState({}, '', newUrl);
+              loadVueApp();
+            })
+            .catch(function (error) {
+              alert(error && error.message ? error.message : 'Project tidak ditemukan');
+              redirectToProjects();
+            });
+          return;
+        }
+
+        var existingBase = normalizeBaseUrl(localStorage.getItem(STORAGE_KEYS.base) || '');
+        if (!existingBase) {
+          redirectToProjects();
+          return;
+        }
+        updateTitle(localStorage.getItem(STORAGE_KEYS.name));
+        loadVueApp();
+      })();
+    </script>
   </body>
   </html>

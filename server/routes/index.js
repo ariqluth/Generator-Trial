@@ -8,6 +8,7 @@ import productionGuard from '../middleware/productionGuard.js';
 import dynamicRoutes from './dynamicRoutes.min.js';
 import customFunctionRoutes from './customFunctionRoutes.min.js';
 import erdViewRoutes from './erdViewRoutes.min.js';
+import projectRoutes from './projectRoutes.js';
 
 const router = express.Router();
 
@@ -20,6 +21,7 @@ router.use('/docs', productionGuard, docsRoutes);
 router.use('/dynamic', dynamicRoutes);
 router.use('/fn', customFunctionRoutes);
 router.use('/erd', productionGuard, erdViewRoutes);
+router.use('/projects', projectRoutes);
 
 // Health check route
 router.get('/health', (req, res) => {

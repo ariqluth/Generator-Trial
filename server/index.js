@@ -63,6 +63,14 @@ app.use('/uploads', express.static('uploads'));
 
 // Landing page route
 app.get('/', (req, res) => {
+  res.render('projects');
+});
+
+app.get('/projects', (req, res) => {
+  res.render('projects');
+});
+
+app.get('/wireframe', (req, res) => {
   res.render('homepage');
 });
 
