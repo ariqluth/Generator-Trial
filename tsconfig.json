@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "allowJs": true,
+    "checkJs": false,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": [
+    "server/**/*.ts",
+    "server/**/*.js",
+    "server/**/*.vue"
+  ],
+  "exclude": [
+    "server/controllers/test cobaController.js",
+    "server/hooks/test cobaHooks.js"
+  ]
+}

@@ -17,6 +17,7 @@ const __dirname = path.dirname(__filename);
 
 // Import routes
 import apiRoutes from './routes/index.js';
+import erdViewRoutes from './routes/erdViewRoutes.min.js';
 
 // Initialize environment variables
 dotenv.config();
@@ -78,6 +79,9 @@ app.get('/wireframe', (req, res) => {
 app.get('/docs', (req, res) => {
   res.render('docs');
 });
+
+// ERD view
+app.use('/erd', erdViewRoutes);
 
 
 // API routes

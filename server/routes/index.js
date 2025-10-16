@@ -7,7 +7,6 @@ import user_defaultRoutes from './user_defaultRoutes.js';
 import productionGuard from '../middleware/productionGuard.js';
 import dynamicRoutes from './dynamicRoutes.min.js';
 import customFunctionRoutes from './customFunctionRoutes.min.js';
-import erdViewRoutes from './erdViewRoutes.min.js';
 import projectRoutes from './projectRoutes.js';
 
 const router = express.Router();
@@ -15,12 +14,10 @@ const router = express.Router();
 // API routes
 router.use('/auth', authRoutes);
 router.use('/generator', productionGuard, generatorRoutes);
-// Allow wireframe in all envs to support local generator UI
-router.use('/wireframe', /*productionGuard,*/ wireframeRoutes);
+router.use('/wireframe', wireframeRoutes);
 router.use('/docs', productionGuard, docsRoutes);
 router.use('/dynamic', dynamicRoutes);
 router.use('/fn', customFunctionRoutes);
-router.use('/erd', productionGuard, erdViewRoutes);
 router.use('/projects', projectRoutes);
 
 // Health check route
