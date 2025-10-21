@@ -35,16 +35,35 @@
         border: 1px solid #e2e8f0;
         box-shadow: 0 15px 35px -20px rgba(15, 23, 42, 0.4);
         overflow: visible;
+        cursor: grab;
+      }
+      .diagram-wrapper.is-panning {
+        cursor: grabbing;
       }
       .diagram-node {
         position: absolute;
         border-radius: 12px;
-        overflow: hidden;
+        overflow: visible;
         background: white;
         border: 1px solid #e2e8f0;
         box-shadow: 0 18px 38px -24px rgba(15, 23, 42, 0.35);
         min-width: 240px;
         z-index: 2;
+        cursor: grab;
+        transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+      }
+      .diagram-node.dragging {
+        cursor: grabbing;
+        box-shadow: 0 20px 45px -24px rgba(99, 102, 241, 0.45);
+      }
+      .diagram-node.active {
+        border-color: rgba(99, 102, 241, 0.45);
+        box-shadow: 0 20px 45px -24px rgba(99, 102, 241, 0.35);
+      }
+      .diagram-node-shell {
+        overflow: hidden;
+        border-radius: inherit;
+        background: white;
       }
       .diagram-node-header {
         padding: 12px 16px;
@@ -103,6 +122,9 @@
         fill: #475569;
         font-weight: 500;
       }
+      .field-tooltip {
+        min-width: 240px;
+      }
       .scale-hint {
         position: absolute;
         inset: 0;
@@ -134,52 +156,239 @@
       </header>
 
       <div class="flex flex-1 overflow-hidden">
-        <aside class="w-72 bg-white border-r border-slate-200 flex flex-col">
-          <div class="px-5 py-4 border-b border-slate-200 flex items-center gap-3">
-            <div class="text-sm font-semibold text-slate-800 flex-1">Tables</div>
-            <button type="button" class="text-xs px-3 py-1.5 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition" @click="toggleSelectAll">
-              {{ allSelected ? 'Clear' : 'Select All' }}
-            </button>
+        <aside class="w-80 bg-white border-r border-slate-200 flex flex-col">
+          <div class="px-5 pt-5 pb-4 border-b border-slate-200">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="text-[11px] uppercase tracking-wide text-slate-500">Navigator</div>
+                <div class="text-sm font-semibold text-slate-800 mt-1">Database workspace</div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  v-if="leftPanelTab === 'tables'"
+                  type="button"
+                  class="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition"
+                  @click="createTable"
+                >
+                  <i class="fa-solid fa-plus mr-1"></i> Add table
+                </button>
+                <button
+                  v-else-if="leftPanelTab === 'relationships'"
+                  type="button"
+                  class="text-xs px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                  @click="createRelationship"
+                >
+                  <i class="fa-solid fa-link mr-1"></i> Add relationship
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="text-xs px-3 py-1.5 rounded bg-amber-500 text-white hover:bg-amber-600 transition"
+                  @click="createNote"
+                >
+                  <i class="fa-solid fa-note-sticky mr-1"></i> New note
+                </button>
+              </div>
+            </div>
+            <div class="mt-4 grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                :class="[
+                  'px-3 py-1.5 rounded-full border text-xs font-medium transition',
+                  leftPanelTab === 'tables'
+                    ? 'bg-indigo-50 text-indigo-600 border-indigo-200 shadow-sm'
+                    : 'bg-slate-100 text-slate-500 border-transparent hover:bg-white hover:text-slate-700'
+                ]"
+                @click="setLeftPanelTab('tables')"
+              >
+                Tables ({{ tables.length }})
+              </button>
+              <button
+                type="button"
+                :class="[
+                  'px-3 py-1.5 rounded-full border text-xs font-medium transition',
+                  leftPanelTab === 'relationships'
+                    ? 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-sm'
+                    : 'bg-slate-100 text-slate-500 border-transparent hover:bg-white hover:text-slate-700'
+                ]"
+                @click="setLeftPanelTab('relationships')"
+              >
+                Relationships ({{ relationshipItems.length }})
+              </button>
+              <button
+                type="button"
+                :class="[
+                  'px-3 py-1.5 rounded-full border text-xs font-medium transition',
+                  leftPanelTab === 'notes'
+                    ? 'bg-amber-50 text-amber-600 border-amber-200 shadow-sm'
+                    : 'bg-slate-100 text-slate-500 border-transparent hover:bg-white hover:text-slate-700'
+                ]"
+                @click="setLeftPanelTab('notes')"
+              >
+                Notes ({{ notes.length }})
+              </button>
+            </div>
           </div>
           <div class="px-5 py-3 border-b border-slate-200">
-            <div class="text-[11px] uppercase tracking-wide text-slate-500 mb-2">Search</div>
-            <div class="relative">
+            <div class="relative" v-if="leftPanelTab === 'tables'">
               <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
               <input
-                v-model="query"
+                v-model="tableQuery"
                 type="text"
-                placeholder="Find table..."
-                class="w-full bg-slate-50 border border-slate-200 rounded pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
+                placeholder="Search tables or fields..."
+                class="w-full bg-slate-50 border border-slate-200 rounded-full pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
+              />
+            </div>
+            <div class="relative" v-else-if="leftPanelTab === 'relationships'">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+              <input
+                v-model="relationshipQuery"
+                type="text"
+                placeholder="Filter relationships..."
+                class="w-full bg-slate-50 border border-slate-200 rounded-full pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+              />
+            </div>
+            <div class="relative" v-else>
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+              <input
+                v-model="noteQuery"
+                type="text"
+                placeholder="Search notes..."
+                class="w-full bg-slate-50 border border-slate-200 rounded-full pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition"
               />
             </div>
           </div>
-          <div class="flex-1 overflow-y-auto px-4 py-4 space-y-2 scrollbar-thin">
-            <div v-if="loading" class="text-xs text-slate-500 text-center py-10">
-              <i class="fa-solid fa-circle-notch animate-spin mr-2"></i>Loading tables...
-            </div>
-            <template v-else>
-              <div v-if="filteredTables.length === 0" class="text-xs text-slate-400 text-center py-10">
-                No tables match the search.
+          <div class="flex-1 overflow-y-auto px-5 py-4 space-y-3 scrollbar-thin">
+            <template v-if="leftPanelTab === 'tables'">
+              <div v-if="loading" class="text-xs text-slate-500 text-center py-10">
+                <i class="fa-solid fa-circle-notch animate-spin mr-2"></i>Loading tables...
               </div>
-              <button
-                v-for="table in filteredTables"
-                :key="table.name"
-                type="button"
-                class="w-full text-left bg-slate-50 hover:bg-white border border-transparent hover:border-slate-200 rounded-lg px-3 py-2 transition flex items-start gap-3 shadow-sm"
-                :class="selected.has(table.name) ? 'border-indigo-100 ring-1 ring-indigo-200 bg-white shadow' : ''"
-                @click="toggleTable(table.name)"
+              <template v-else>
+                <div v-if="filteredTables.length === 0" class="text-xs text-slate-400 text-center py-10">
+                  No tables match the search criteria.
+                </div>
+                <div
+                  v-for="table in filteredTables"
+                  :key="table.name"
+                  :class="[
+                    'overflow-hidden border rounded-xl shadow-sm transition',
+                    activeTableName === table.name
+                      ? 'border-indigo-200 ring-1 ring-indigo-400/40 bg-indigo-50/40'
+                      : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'
+                  ]"
+                >
+                  <div class="flex items-center gap-3 px-3 py-2 cursor-pointer select-none" @click="setActiveTable(table.name)">
+                    <div class="w-1.5 h-full rounded-full" :style="{ backgroundColor: table.color }"></div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold text-slate-700 truncate">{{ table.name }}</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-500">{{ table.fields.length }} fields</span>
+                      </div>
+                      <div class="text-[11px] text-slate-500 truncate">
+                        <template v-if="table.fields.length">
+                          <span v-for="(field, idx) in table.fields.slice(0, 3)" :key="table.name + '-preview-' + idx">
+                            {{ field.name }}<span v-if="idx < Math.min(3, table.fields.length) - 1">, </span>
+                          </span>
+                          <span v-if="table.fields.length > 3">…</span>
+                        </template>
+                        <template v-else>No fields yet</template>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      class="text-slate-400 hover:text-indigo-500 transition text-xs"
+                      :title="selected.has(table.name) ? 'Hide from canvas' : 'Show on canvas'"
+                      @click.stop="toggleTable(table.name)"
+                    >
+                      <i class="fa-solid" :class="selected.has(table.name) ? 'fa-eye' : 'fa-eye-slash'"></i>
+                    </button>
+                  </div>
+                  <div
+                    v-if="activeTableName === table.name"
+                    class="bg-white border-t border-slate-200 px-3 py-2 space-y-1 text-[11px] text-slate-600"
+                  >
+                    <div
+                      v-for="(field, fieldIdx) in table.fields"
+                      :key="table.name + '-field-preview-' + fieldIdx"
+                      class="flex items-center gap-2"
+                    >
+                      <span class="w-4 text-center">
+                        <i
+                          class="fa-solid"
+                          :class="field.primaryKey ? 'fa-key text-amber-500' : field.references ? 'fa-link text-sky-500' : 'fa-circle text-slate-300'"
+                        ></i>
+                      </span>
+                      <span class="flex-1 truncate font-medium text-slate-700">{{ field.name }}</span>
+                      <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">{{ field.type }}</span>
+                    </div>
+                    <div v-if="!table.fields.length" class="text-slate-400">This table has no fields yet.</div>
+                  </div>
+                </div>
+              </template>
+            </template>
+            <template v-else-if="leftPanelTab === 'relationships'">
+              <div v-if="relationshipItems.length === 0" class="text-xs text-slate-400 text-center py-10">
+                No relationships detected. Create one to connect tables.
+              </div>
+              <div
+                v-for="relation in filteredRelationships"
+                :key="relation.id"
+                :class="[
+                  'border rounded-xl px-3 py-2 shadow-sm transition cursor-pointer',
+                  activeRelationshipId === relation.id
+                    ? 'border-emerald-200 bg-emerald-50/60 ring-1 ring-emerald-400/40'
+                    : 'border-slate-200 bg-slate-50 hover:border-emerald-200 hover:bg-white'
+                ]"
+                @click="setActiveRelationship(relation.id)"
               >
-                <span class="mt-1 w-2 h-8 rounded-full" :style="{ backgroundColor: table.color }"></span>
-                <span class="flex-1">
-                  <div class="text-xs font-semibold text-slate-700 truncate">{{ table.name }}</div>
-                  <div class="text-[11px] text-slate-500">{{ table.fields.length }} fields</div>
-                </span>
-                <i v-if="selected.has(table.name)" class="fa-solid fa-check text-indigo-500 text-xs mt-1"></i>
-              </button>
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="inline-flex w-2 h-2 rounded-full" :style="{ backgroundColor: relation.color }"></span>
+                    <span class="text-xs font-semibold text-slate-700 truncate">{{ relation.alias }}</span>
+                  </div>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-500 uppercase tracking-wide">
+                    {{ relation.cardinality.replace(/-/g, ' ') }}
+                  </span>
+                </div>
+                <div class="mt-1 text-[11px] text-slate-500">
+                  {{ relation.source }} <i class="fa-solid fa-arrow-right-arrow-left mx-1 text-slate-400"></i> {{ relation.target || '—' }}
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <div v-if="filteredNotes.length === 0" class="text-xs text-slate-400 text-center py-10">
+                No notes yet. Use notes to capture decisions or TODOs.
+              </div>
+              <div
+                v-for="note in filteredNotes"
+                :key="note.id"
+                :class="[
+                  'rounded-xl border px-3 py-2 transition cursor-pointer shadow-sm',
+                  activeNoteId === note.id
+                    ? 'border-amber-200 bg-amber-50/70 ring-1 ring-amber-400/40'
+                    : 'border-slate-200 bg-slate-50 hover:border-amber-200 hover:bg-white'
+                ]"
+                @click="setActiveNote(note.id)"
+              >
+                <div class="flex items-start gap-2">
+                  <span class="inline-flex w-2 h-2 rounded-full mt-1" :style="{ backgroundColor: note.color || '#FBBF24' }"></span>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-xs font-semibold text-slate-700 truncate">{{ note.title || 'Untitled note' }}</div>
+                    <div class="text-[11px] text-slate-500 truncate whitespace-pre-line">
+                      {{ note.content ? note.content : 'Double click to add more details.' }}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </template>
           </div>
-          <div class="px-5 py-3 border-t border-slate-200 text-[11px] text-slate-400">
-            Showing {{ selected.size }} / {{ tables.length }} tables
+          <div class="px-5 py-3 border-t border-slate-200 text-[11px] text-slate-400 flex items-center justify-between">
+            <div>
+              <span class="font-medium text-slate-500">Canvas:</span> {{ selected.size }} / {{ tables.length }} tables visible
+            </div>
+            <button type="button" class="text-xs text-indigo-500 hover:text-indigo-600" @click="toggleSelectAll">
+              {{ allSelected ? 'Clear all' : 'Select all' }}
+            </button>
           </div>
         </aside>
 
@@ -203,9 +412,17 @@
               <div v-if="loading" class="absolute inset-0 flex items-center justify-center text-slate-500">
                 <i class="fa-solid fa-circle-notch animate-spin mr-2"></i>Preparing diagram...
               </div>
-              <div v-else class="absolute inset-0 overflow-auto scrollbar-thin bg-slate-100">
+              <div
+                v-else
+                class="absolute inset-0 overflow-auto scrollbar-thin bg-slate-100"
+                :class="panState.active ? 'cursor-grabbing' : 'cursor-grab'"
+                ref="scrollContainer"
+                @pointerdown="startCanvasPan"
+              >
                 <div class="min-h-full min-w-full p-10">
-                  <div class="diagram-wrapper inline-block relative"
+                  <div
+                       :class="['diagram-wrapper inline-block relative', panState.active ? 'is-panning' : '']"
+                       ref="wrapperRef"
                        :style="{
                          transform: 'scale(' + zoom / 100 + ')',
                          transformOrigin: '0 0',
@@ -250,29 +467,128 @@
                       </svg>
                       <div v-for="node in diagramNodes"
                            :key="node.name"
-                           class="diagram-node"
+                           :class="[
+                             'diagram-node',
+                             activeTableName === node.name ? 'active' : '',
+                             draggingState.active && draggingState.name === node.name ? 'dragging' : ''
+                           ]"
+                           @pointerdown.stop.prevent="startNodeDrag($event, node)"
+                           @dblclick.stop="setActiveTable(node.name)"
                            :style="{
                              top: node.top + 'px',
                              left: node.left + 'px',
                              width: node.width + 'px',
                              borderTop: '4px solid ' + node.color
                            }">
-                        <div class="diagram-node-header"
-                             :style="{ background: node.headerBackground, borderBottomColor: node.headerBorder }">
-                          <span>{{ node.name }}</span>
-                          <span class="diagram-node-pill" :style="{ background: node.pillBackground, color: node.pillColor }">
-                            {{ node.fields.length }} fields
-                          </span>
-                        </div>
-                        <div class="diagram-node-fields">
-                          <template v-if="node.fields.length">
-                            <div v-for="field in node.fields" :key="field.name" class="diagram-node-field">
-                              <strong>{{ field.name }}</strong>
-                              <span class="diagram-node-type">{{ field.type }}</span>
+                        <div class="diagram-node-shell">
+                          <div class="diagram-node-header"
+                               :style="{ background: node.headerBackground, borderBottomColor: node.headerBorder }">
+                            <div class="flex items-center gap-2">
+                              <span>{{ node.name }}</span>
                             </div>
-                          </template>
-                          <div v-else class="diagram-node-field text-slate-400" style="justify-content: flex-start">
-                            <span>Tidak ada field</span>
+                            <div class="flex items-center gap-2">
+                              <span class="diagram-node-pill" :style="{ background: node.pillBackground, color: node.pillColor }">
+                                {{ node.fields.length }} fields
+                              </span>
+                              <div class="flex items-center gap-1 text-[11px] text-slate-500">
+                                <button type="button" class="w-6 h-6 flex items-center justify-center rounded hover:bg-white/60 transition"
+                                        @click.stop="setActiveTable(node.name)">
+                                  <i class="fa-solid fa-thumbtack"></i>
+                                </button>
+                                <button type="button" class="w-6 h-6 flex items-center justify-center rounded hover:bg-white/60 transition"
+                                        @click.stop="setActiveTable(node.name)">
+                                  <i class="fa-solid fa-note-sticky"></i>
+                                </button>
+                                <button type="button" class="w-6 h-6 flex items-center justify-center rounded hover:bg-white/60 transition"
+                                        @click.stop="setActiveTable(node.name)">
+                                  <i class="fa-solid fa-ellipsis"></i>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="diagram-node-fields">
+                            <template v-if="node.fields.length">
+                              <div
+                                v-for="(field, fieldIndex) in node.fields"
+                                :key="node.name + '-' + fieldIndex"
+                                class="diagram-node-field group relative overflow-visible"
+                              >
+                                <div class="flex items-center gap-2 min-w-0">
+                                  <span
+                                    class="flex items-center justify-center w-6 h-6 rounded-full border text-[10px]"
+                                    :class="field.primaryKey
+                                      ? 'bg-indigo-50 text-indigo-600 border-indigo-200'
+                                      : field.references
+                                        ? 'bg-sky-50 text-sky-600 border-sky-200'
+                                        : 'bg-slate-100 text-slate-500 border-slate-200'"
+                                  >
+                                    <i
+                                      class="fa-solid"
+                                      :class="field.primaryKey ? 'fa-key' : field.references ? 'fa-link' : 'fa-circle-dot'"
+                                    ></i>
+                                  </span>
+                                  <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                      <strong class="truncate">{{ field.name }}</strong>
+                                      <span
+                                        v-if="field.references"
+                                        class="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-600 border border-sky-200"
+                                      >
+                                        FK
+                                      </span>
+                                    </div>
+                                    <div v-if="field.comment" class="text-[10px] text-slate-400 truncate">
+                                      {{ field.comment }}
+                                    </div>
+                                  </div>
+                                </div>
+                                <span class="diagram-node-type">{{ field.type }}</span>
+                                <div
+                                  class="absolute z-30 left-full top-1/2 -translate-y-1/2 ml-3 hidden group-hover:flex pointer-events-none group-hover:pointer-events-auto"
+                                >
+                                  <div class="field-tooltip rounded-lg border border-slate-200 bg-white shadow-lg p-3 text-[11px] text-slate-600">
+                                    <div class="font-semibold text-slate-700">{{ field.name }}</div>
+                                    <div class="mt-2 space-y-2">
+                                      <div class="flex flex-wrap gap-1" v-if="getFieldBadges(field).length">
+                                        <span
+                                          v-for="badge in getFieldBadges(field)"
+                                          :key="badge.label"
+                                          class="px-2 py-0.5 rounded-full border text-[10px] font-medium"
+                                          :class="badge.tone"
+                                        >
+                                          {{ badge.label }}
+                                        </span>
+                                      </div>
+                                      <div class="flex justify-between gap-2">
+                                        <span class="text-slate-500">Type</span>
+                                        <span class="text-slate-700 font-medium">{{ field.type }}</span>
+                                      </div>
+                                      <div class="flex justify-between gap-2">
+                                        <span class="text-slate-500">Default</span>
+                                        <span class="text-slate-700">{{ formatDefaultValueForDisplay(field.defaultValue) }}</span>
+                                      </div>
+                                      <div class="flex justify-between gap-2">
+                                        <span class="text-slate-500">Null</span>
+                                        <span class="text-slate-700">{{ field.allowNull === false ? 'Not allowed' : 'Allowed' }}</span>
+                                      </div>
+                                      <div class="flex justify-between gap-2" v-if="field.references">
+                                        <span class="text-slate-500">References</span>
+                                        <span class="text-slate-700">{{ formatReferenceForDisplay(field) }}</span>
+                                      </div>
+                                      <div v-if="!field.comment && !field.references" class="text-slate-400">
+                                        No additional metadata
+                                      </div>
+                                    </div>
+                                    <div v-if="field.comment" class="mt-3 pt-2 border-t border-slate-100 text-slate-500">
+                                      {{ field.comment }}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </template>
+                            <div v-else class="diagram-node-field text-slate-400" style="justify-content: flex-start">
+                              <span>Tidak ada field</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -294,6 +610,331 @@
             </div>
           </div>
         </main>
+
+        <aside class="w-[26rem] bg-white border-l border-slate-200 flex flex-col">
+          <div class="px-6 py-4 border-b border-slate-200">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="text-sm font-semibold text-slate-800">
+                  <template v-if="leftPanelTab === 'tables'">Table properties</template>
+                  <template v-else-if="leftPanelTab === 'relationships'">Relationship settings</template>
+                  <template v-else>Notes</template>
+                </div>
+                <div class="text-xs text-slate-500 mt-1">
+                  <template v-if="leftPanelTab === 'tables'">
+                    Modify table details and keep structure in sync with the diagram.
+                  </template>
+                  <template v-else-if="leftPanelTab === 'relationships'">
+                    Adjust how tables connect, including cardinality and referential actions.
+                  </template>
+                  <template v-else>
+                    Capture design decisions, todos, or comments for collaborators.
+                  </template>
+                </div>
+              </div>
+              <div class="text-[11px] text-slate-400 whitespace-nowrap">
+                Updated {{ lastUpdated }}
+              </div>
+            </div>
+          </div>
+          <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5 scrollbar-thin">
+            <template v-if="leftPanelTab === 'tables'">
+              <div v-if="!activeTable" class="text-xs text-slate-500 leading-relaxed">
+                Choose a table from the navigator or canvas to start editing its fields.
+              </div>
+              <template v-else>
+                <div class="space-y-5">
+                  <div>
+                    <label class="text-[11px] uppercase tracking-wide text-slate-500 mb-1 block">Table name</label>
+                    <input
+                      :value="activeTable.name"
+                      type="text"
+                      class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="users"
+                      @blur="renameTable(activeTable.name, $event.target.value)"
+                      @keydown.enter.prevent="$event.target.blur()"
+                    />
+                  </div>
+                  <div class="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                    <div class="px-3 py-2 bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-500">
+                      Fields ({{ activeTable.fields.length }})
+                    </div>
+                    <div v-if="activeTable.fields.length === 0" class="px-4 py-6 text-xs text-slate-500 text-center">
+                      This table does not have any fields yet. Add one using the button below.
+                    </div>
+                    <div v-else class="divide-y divide-slate-200">
+                      <div
+                        v-for="(field, index) in activeTable.fields"
+                        :key="activeTable.name + '-form-' + index"
+                        class="px-4 py-3 space-y-3 bg-white"
+                      >
+                        <div class="flex items-start gap-3">
+                          <div class="w-6 h-6 rounded-full flex items-center justify-center border border-slate-200 text-[11px] text-slate-500 bg-slate-50">
+                            {{ index + 1 }}
+                          </div>
+                          <div class="flex-1 space-y-3">
+                            <div class="flex items-center gap-2">
+                              <input
+                                :value="field.name"
+                                type="text"
+                                class="w-full bg-white border border-slate-200 rounded px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                placeholder="id"
+                                @blur="updateFieldName(activeTable.name, index, $event.target.value)"
+                                @keydown.enter.prevent="$event.target.blur()"
+                              />
+                              <button
+                                type="button"
+                                class="text-rose-500 hover:text-rose-600 text-xs"
+                                title="Remove field"
+                                @click="removeFieldFromTable(activeTable.name, index)"
+                              >
+                                <i class="fa-solid fa-trash"></i>
+                              </button>
+                            </div>
+                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                              <div>
+                                <label class="text-[11px] text-slate-500 uppercase tracking-wide block mb-1">Type</label>
+                                <select
+                                  :value="field.type"
+                                  class="w-full bg-white border border-slate-200 rounded px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                  @change="updateFieldType(activeTable.name, index, $event.target.value)"
+                                >
+                                  <option v-for="option in fieldTypeOptions" :key="option" :value="option">
+                                    {{ option }}
+                                  </option>
+                                  <option
+                                    v-if="field.type && !fieldTypeOptions.includes(field.type)"
+                                    :value="field.type"
+                                  >
+                                    {{ field.type }}
+                                  </option>
+                                </select>
+                              </div>
+                              <div>
+                                <label class="text-[11px] text-slate-500 uppercase tracking-wide block mb-1">Metadata</label>
+                                <div class="flex flex-wrap gap-1">
+                                  <template v-if="getFieldBadges(field).length">
+                                    <span
+                                      v-for="badge in getFieldBadges(field)"
+                                      :key="badge.label"
+                                      class="px-2 py-0.5 rounded-full border text-[10px] font-medium"
+                                      :class="badge.tone"
+                                    >
+                                      {{ badge.label }}
+                                    </span>
+                                  </template>
+                                  <span v-else class="px-2 py-0.5 rounded-full border border-dashed text-[10px] text-slate-400">
+                                    No badge
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 text-[11px] text-slate-500">
+                              <div>
+                                <div class="font-medium text-slate-600">Default value</div>
+                                <div>{{ formatDefaultValueForDisplay(field.defaultValue) }}</div>
+                              </div>
+                              <div>
+                                <div class="font-medium text-slate-600">Nullability</div>
+                                <div>{{ field.allowNull === false ? 'Not allowed' : 'Allowed' }}</div>
+                              </div>
+                              <div v-if="field.references" class="col-span-2">
+                                <div class="font-medium text-slate-600">References</div>
+                                <div>{{ formatReferenceForDisplay(field) }}</div>
+                              </div>
+                              <div v-if="field.comment" class="col-span-2">
+                                <div class="font-medium text-slate-600">Comment</div>
+                                <div>{{ field.comment }}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      class="flex-1 text-xs px-3 py-2 rounded border border-dashed border-indigo-400 text-indigo-600 hover:bg-indigo-50 transition"
+                      @click="addFieldToTable(activeTable.name)"
+                    >
+                      <i class="fa-solid fa-plus mr-1"></i> Add field
+                    </button>
+                    <button
+                      type="button"
+                      class="text-xs px-3 py-2 rounded border border-rose-200 text-rose-600 hover:bg-rose-50 transition"
+                      @click="removeActiveTable"
+                    >
+                      <i class="fa-solid fa-trash mr-1"></i> Delete table
+                    </button>
+                  </div>
+                </div>
+              </template>
+            </template>
+            <template v-else-if="leftPanelTab === 'relationships'">
+              <div v-if="!activeRelationship" class="text-xs text-slate-500 leading-relaxed">
+                Select a relationship to view or edit its configuration.
+              </div>
+              <template v-else>
+                <div class="space-y-5">
+                  <div>
+                    <label class="text-[11px] uppercase tracking-wide text-slate-500 mb-1 block">Relationship name</label>
+                    <input
+                      :value="activeRelationship.alias"
+                      type="text"
+                      class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="users_posts_fk"
+                      @blur="renameRelationship(activeRelationship.id, $event.target.value)"
+                      @keydown.enter.prevent="$event.target.blur()"
+                    />
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="text-[11px] uppercase tracking-wide text-slate-500 mb-1 block">Primary table</label>
+                      <div class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-100 text-xs text-slate-600">
+                        {{ activeRelationship.source }}
+                      </div>
+                    </div>
+                    <div>
+                      <label class="text-[11px] uppercase tracking-wide text-slate-500 mb-1 block">Foreign table</label>
+                      <select
+                        :value="activeRelationship.target"
+                        class="w-full bg-white border border-slate-200 rounded px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        @change="updateRelationshipTarget(activeRelationship.id, $event.target.value)"
+                      >
+                        <option disabled value="">Select table</option>
+                        <option v-for="table in tables" :key="table.name" :value="table.name">
+                          {{ table.name }}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-[11px] uppercase tracking-wide text-slate-500 mb-1 block">Cardinality</label>
+                    <select
+                      :value="activeRelationship.cardinality"
+                      class="w-full bg-white border border-slate-200 rounded px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      @change="updateRelationshipCardinality(activeRelationship.id, $event.target.value)"
+                    >
+                      <option v-for="option in relationshipCardinalityOptions" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                      </option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-[11px] uppercase tracking-wide text-slate-500 mb-1 block">Many(n) side label</label>
+                    <input
+                      :value="activeRelationship.manyLabel"
+                      type="text"
+                      class="w-full bg-white border border-slate-200 rounded px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="Label"
+                      @input="updateRelationshipManyLabel(activeRelationship.id, $event.target.value)"
+                    />
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="text-[11px] uppercase tracking-wide text-slate-500 mb-1 block">On update</label>
+                      <select
+                        :value="activeRelationship.onUpdate"
+                        class="w-full bg-white border border-slate-200 rounded px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        @change="updateRelationshipAction(activeRelationship.id, 'onUpdate', $event.target.value)"
+                      >
+                        <option v-for="option in referentialActionOptions" :key="option.value" :value="option.value">
+                          {{ option.label }}
+                        </option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="text-[11px] uppercase tracking-wide text-slate-500 mb-1 block">On delete</label>
+                      <select
+                        :value="activeRelationship.onDelete"
+                        class="w-full bg-white border border-slate-200 rounded px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        @change="updateRelationshipAction(activeRelationship.id, 'onDelete', $event.target.value)"
+                      >
+                        <option v-for="option in referentialActionOptions" :key="option.value" :value="option.value">
+                          {{ option.label }}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="text-xs px-3 py-2 rounded border border-rose-200 text-rose-600 hover:bg-rose-50 transition"
+                    @click="removeRelationship(activeRelationship.id)"
+                  >
+                    <i class="fa-solid fa-trash mr-1"></i> Delete relationship
+                  </button>
+                </div>
+              </template>
+            </template>
+            <template v-else>
+              <div v-if="!activeNote" class="text-xs text-slate-500 leading-relaxed">
+                Select or create a note to keep track of decisions and reminders.
+              </div>
+              <template v-else>
+                <div class="space-y-5">
+                  <div>
+                    <label class="text-[11px] uppercase tracking-wide text-slate-500 mb-1 block">Title</label>
+                    <input
+                      :value="activeNote.title"
+                      type="text"
+                      class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="New note"
+                      @input="updateNoteTitle(activeNote.id, $event.target.value)"
+                    />
+                  </div>
+                  <div>
+                    <label class="text-[11px] uppercase tracking-wide text-slate-500 mb-1 block">Content</label>
+                    <textarea
+                      :value="activeNote.content"
+                      class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[160px]"
+                      placeholder="Describe constraints, todos, or clarifications…"
+                      @input="updateNoteContent(activeNote.id, $event.target.value)"
+                    ></textarea>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <label class="text-[11px] uppercase tracking-wide text-slate-500">Accent</label>
+                    <input
+                      type="color"
+                      :value="activeNote.color || '#FBBF24'"
+                      class="w-12 h-7 border border-slate-200 rounded cursor-pointer"
+                      @input="updateNoteColor(activeNote.id, $event.target.value)"
+                    />
+                    <span class="text-xs text-slate-500">Use color to highlight note priority.</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="text-xs px-3 py-2 rounded border border-rose-200 text-rose-600 hover:bg-rose-50 transition"
+                    @click="removeNote(activeNote.id)"
+                  >
+                    <i class="fa-solid fa-trash mr-1"></i> Delete note
+                  </button>
+                </div>
+              </template>
+            </template>
+          </div>
+          <div class="px-6 py-4 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="text-xs px-3 py-1.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                @click="resetManualLayout"
+              >
+                <i class="fa-solid fa-rotate mr-1"></i> Reset layout
+              </button>
+              <button
+                type="button"
+                class="text-xs px-3 py-1.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                @click="reload"
+              >
+                <i class="fa-solid fa-rotate-right mr-1"></i> Reload data
+              </button>
+            </div>
+            <div class="text-right">
+              Drag nodes to reposition. Hold and drag empty canvas to pan.
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
 
